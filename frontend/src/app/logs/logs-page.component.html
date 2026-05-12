@@ -1,0 +1,137 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Log Viewer</h1>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="onImport()" [disabled]="store.loading()">
+        Import Logs
+      </button>
+      @if (store.loading()) {
+        <span class="spinner" aria-label="Loading…"></span>
+      }
+    </div>
+  </header>
+
+  @if (store.errorMessage()) {
+    <div class="error-banner" role="alert">{{ store.errorMessage() }}</div>
+  }
+
+  <!-- Summary cards -->
+  @if (store.summary(); as summary) {
+    <section class="summary-grid" aria-label="Summary">
+      <div class="card card-total">
+        <span class="card-label">Total</span>
+        <span class="card-value">{{ summary.total }}</span>
+      </div>
+      <div class="card card-info">
+        <span class="card-label">INFO</span>
+        <span class="card-value">{{ summary.bySeverity['INFO'] }}</span>
+      </div>
+      <div class="card card-warning">
+        <span class="card-label">WARNING</span>
+        <span class="card-value">{{ summary.bySeverity['WARNING'] }}</span>
+      </div>
+      <div class="card card-error">
+        <span class="card-label">ERROR</span>
+        <span class="card-value">{{ summary.bySeverity['ERROR'] }}</span>
+      </div>
+      <div class="card card-debug">
+        <span class="card-label">DEBUG</span>
+        <span class="card-value">{{ summary.bySeverity['DEBUG'] }}</span>
+      </div>
+    </section>
+  }
+
+  <!-- Filters -->
+  <section class="filters-section">
+    <form [formGroup]="filterForm" class="filters-form" (ngSubmit)="onApplyFilters()">
+      <div class="filter-field">
+        <label for="severity">Severity</label>
+        <select id="severity" formControlName="severity">
+          <option value="">All</option>
+          @for (sev of severities; track sev) {
+            <option [value]="sev">{{ sev }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="search">Search</label>
+        <input id="search" type="text" formControlName="search" placeholder="Filter by message…" />
+      </div>
+
+      <div class="filter-field">
+        <label for="from">From</label>
+        <input id="from" type="datetime-local" formControlName="from" />
+      </div>
+
+      <div class="filter-field">
+        <label for="to">To</label>
+        <input id="to" type="datetime-local" formControlName="to" />
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="store.loading()">Apply Filters</button>
+        <button type="button" class="btn btn-secondary" (click)="onClearFilters()">Clear</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Logs table -->
+  <section class="logs-section">
+    <h2>Logs <span class="count-badge">{{ store.logs().length }}</span></h2>
+
+    @if (store.logs().length === 0 && !store.loading()) {
+      <p class="empty-state">No log entries. Run an import or adjust your filters.</p>
+    } @else {
+      <div class="table-wrapper">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Severity</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of store.logs(); track entry.id) {
+              <tr>
+                <td class="col-timestamp">{{ formatTimestamp(entry.timestamp) }}</td>
+                <td class="col-severity">
+                  <span class="badge badge-{{ entry.severity.toLowerCase() }}">{{ entry.severity }}</span>
+                </td>
+                <td class="col-message">{{ entry.message }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <!-- Parse errors -->
+  @if (store.parseErrors().length > 0) {
+    <section class="parse-errors-section">
+      <h2>Parse Errors <span class="count-badge count-badge-error">{{ store.parseErrors().length }}</span></h2>
+      <div class="table-wrapper">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>Line #</th>
+              <th>Raw Line</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (err of store.parseErrors(); track err.lineNumber) {
+              <tr>
+                <td class="col-line">{{ err.lineNumber }}</td>
+                <td class="col-raw">{{ err.rawLine }}</td>
+                <td class="col-reason">{{ err.reason }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

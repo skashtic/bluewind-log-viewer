@@ -5,7 +5,7 @@ A log viewer application built as a home task assignment.
 ## Stack
 
 - **Backend**: Node.js + TypeScript + Express
-- **Frontend**: Angular (not yet implemented)
+- **Frontend**: Angular 21 (standalone components, Signals)
 
 ---
 
@@ -20,6 +20,26 @@ npm start         # run compiled output
 ```
 
 Place your log file at `backend/data/log.txt` before calling the import endpoint.
+
+---
+
+## Running the Frontend
+
+```bash
+cd frontend
+npm install
+npm start     # dev server on http://localhost:4200 (proxies /api to backend port 3000)
+npm run build # production build to dist/
+```
+
+The frontend proxies all `/api/*` requests to the backend via `proxy.conf.json`. Both servers must run concurrently during development.
+
+**Typical workflow:**
+
+1. Start the backend: `cd backend && npm run dev`
+2. Start the frontend: `cd frontend && npm start`
+3. Open `http://localhost:4200`
+4. Click **Import Logs** to parse `backend/data/log.txt` and populate the view
 
 ---
 
@@ -129,6 +149,17 @@ backend/
     └── middleware/
         ├── error-handler.ts           # Central 500 error middleware
         └── not-found-handler.ts       # 404 handler for unknown routes
+
+frontend/src/app/
+├── app.ts                             # Root component — renders LogsPageComponent
+├── app.config.ts                      # Bootstrap config — provides HttpClient
+└── logs/
+    ├── logs.types.ts                  # Frontend types mirroring backend shapes
+    ├── logs-api.service.ts            # HTTP calls only (import/getLogs/getSummary/getErrors)
+    ├── logs.store.ts                  # Signals-based state + orchestration
+    ├── logs-page.component.ts         # Thin component, reactive filter form
+    ├── logs-page.component.html       # Template: header, summary, filters, table, errors
+    └── logs-page.component.css        # Responsive plain CSS (grid + flex)
 ```
 
 ### Architecture decisions
@@ -143,5 +174,6 @@ backend/
 
 - No database — repository is in-memory only; data is lost on server restart.
 - No S3 — `FileSystemLogSourceProvider` reads a local file.
-- No frontend yet.
+- Frontend state is Signals-only — no NgRx, no third-party state library.
+- No Angular Material or other UI libraries — plain CSS.
 - No authentication, caching, or queuing.
