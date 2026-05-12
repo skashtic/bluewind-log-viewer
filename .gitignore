@@ -9,6 +9,9 @@ backend/dist/
 frontend/dist/
 build/
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # env
 .env
 .env.local
