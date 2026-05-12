@@ -1,16 +1,43 @@
-import { mockLogEntries } from "./mock-log-entries";
+import { ILogSourceProvider } from "./log-source.provider";
+import { parseLines } from "./log-parser.service";
+import * as repository from "./in-memory-logs.repository";
 import {
+  ImportResponse,
   LogEntry,
-  LogsFilter,
-  LogsResponse,
+  LogFilters,
   LogsSummaryResponse,
-  Severity,
+  LogsResponse,
+  LogSeverity,
+  ParseError,
 } from "./logs.types";
 
-const SEVERITIES: Severity[] = ["INFO", "WARNING", "ERROR", "DEBUG"];
+const SEVERITIES: LogSeverity[] = ["INFO", "WARNING", "ERROR", "DEBUG"];
 
-export function getLogs(filter: LogsFilter): LogsResponse {
-  let entries: LogEntry[] = [...mockLogEntries];
+export async function importLogs(
+  source: ILogSourceProvider
+): Promise<ImportResponse> {
+  const lines = await source.readRawLines();
+  const { entries, errors } = parseLines(lines);
+
+  repository.save(entries, errors);
+
+  const bySeverity = SEVERITIES.reduce((acc, sev) => {
+    acc[sev] = entries.filter((e) => e.severity === sev).length;
+    return acc;
+  }, {} as Record<LogSeverity, number>);
+
+  return {
+    summary: {
+      totalLines: lines.length,
+      validEntries: entries.length,
+      parseErrors: errors.length,
+      bySeverity,
+    },
+  };
+}
+
+export function getLogs(filter: LogFilters): LogsResponse {
+  let entries: LogEntry[] = repository.getEntries();
 
   if (filter.severity) {
     entries = entries.filter((e) => e.severity === filter.severity);
@@ -35,10 +62,16 @@ export function getLogs(filter: LogsFilter): LogsResponse {
 }
 
 export function getLogsSummary(): LogsSummaryResponse {
-  const bySeverity = SEVERITIES.reduce((acc, sev) => {
-    acc[sev] = mockLogEntries.filter((e) => e.severity === sev).length;
-    return acc;
-  }, {} as Record<Severity, number>);
+  const all = repository.getEntries();
 
-  return { total: mockLogEntries.length, bySeverity };
+  const bySeverity = SEVERITIES.reduce((acc, sev) => {
+    acc[sev] = all.filter((e) => e.severity === sev).length;
+    return acc;
+  }, {} as Record<LogSeverity, number>);
+
+  return { total: all.length, bySeverity };
+}
+
+export function getParseErrors(): ParseError[] {
+  return repository.getErrors();
 }

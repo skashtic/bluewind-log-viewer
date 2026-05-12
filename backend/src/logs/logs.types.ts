@@ -1,17 +1,35 @@
-export type Severity = "INFO" | "WARNING" | "ERROR" | "DEBUG";
+export type LogSeverity = "INFO" | "WARNING" | "ERROR" | "DEBUG";
 
 export interface LogEntry {
   id: string;
+  lineNumber: number;
   timestamp: string;
-  severity: Severity;
+  severity: LogSeverity;
   message: string;
 }
 
-export interface LogsFilter {
-  severity?: Severity;
+export interface LogFilters {
+  severity?: LogSeverity;
   search?: string;
   from?: string;
   to?: string;
+}
+
+export interface ParseError {
+  lineNumber: number;
+  rawLine: string;
+  reason: string;
+}
+
+export interface ImportSummary {
+  totalLines: number;
+  validEntries: number;
+  parseErrors: number;
+  bySeverity: Record<LogSeverity, number>;
+}
+
+export interface ImportResponse {
+  summary: ImportSummary;
 }
 
 export interface LogsResponse {
@@ -21,5 +39,5 @@ export interface LogsResponse {
 
 export interface LogsSummaryResponse {
   total: number;
-  bySeverity: Record<Severity, number>;
+  bySeverity: Record<LogSeverity, number>;
 }
