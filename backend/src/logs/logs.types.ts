@@ -15,10 +15,16 @@ export interface LogFilters {
   to?: string;
 }
 
+export type ParseErrorReason =
+  | "INVALID_FORMAT"
+  | "INVALID_TIMESTAMP"
+  | "UNSUPPORTED_SEVERITY"
+  | "ORPHAN_CONTINUATION_LINE";
+
 export interface ParseError {
   lineNumber: number;
   rawLine: string;
-  reason: string;
+  reason: ParseErrorReason;
 }
 
 export interface ImportSummary {

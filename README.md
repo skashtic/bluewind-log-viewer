@@ -168,7 +168,16 @@ frontend/src/app/
 - Parsed data is held in a module-level in-memory repository. It can later be replaced with SQLite or Postgres without touching the service or controller layers.
 - Parsing is triggered explicitly via `POST /api/logs/import`. GET endpoints read from the already-parsed repository — no file I/O on read.
 - Malformed lines do not crash the import; they are collected as `ParseError` objects and accessible via `GET /api/logs/errors`.
-- Continuation lines (non-header, non-blank lines following a valid entry) are appended to the previous entry's message.
+- Continuation lines (plain text following a valid entry with no malformed line in between) are appended to the previous entry's message. If a malformed line appears between a valid entry and plain text, the plain text is reported as `ORPHAN_CONTINUATION_LINE` rather than silently attached to the wrong entry.
+
+### Parser error handling
+
+The parser is strict and does not guess or auto-correct corrupted data:
+
+- Malformed lines are always reported as `ParseError` objects — they are never silently dropped.
+- Each parse error includes `lineNumber`, `rawLine`, and one of four explicit reasons: `INVALID_FORMAT`, `INVALID_TIMESTAMP`, `UNSUPPORTED_SEVERITY`, `ORPHAN_CONTINUATION_LINE`.
+- Corrupted timestamps (e.g. `101645` instead of `10:16:45`) are not auto-corrected — the line is reported as a parse error.
+- The only normalization performed is splitting a line where a recognisable log header (`YYYY-MM-DD HH:MM:SS [SEVERITY]`) appears after position 0. This is safe and minimal — it does not modify message content.
 
 ### Intentional simplifications (current step)
 
