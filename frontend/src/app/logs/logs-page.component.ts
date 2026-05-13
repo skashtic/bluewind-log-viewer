@@ -1,7 +1,9 @@
 import { Component, computed, effect, inject, OnInit } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
-import { LogsStore } from './logs.store';
+import { startWith } from 'rxjs';
+import { LogsStore, logFiltersKey } from './logs.store';
 import { LogFilters, LogSeverity } from './logs.types';
 
 @Component({
@@ -22,6 +24,20 @@ export class LogsPageComponent implements OnInit {
     search: [''],
     from: [''],
     to: [''],
+  });
+
+  private readonly rawFilterFormValues = toSignal(
+    this.filterForm.valueChanges.pipe(startWith(this.filterForm.getRawValue())),
+    { initialValue: this.filterForm.getRawValue() }
+  );
+
+  /** Dim Apply when the form matches the last successful load (or while loading). */
+  readonly applyFiltersButtonDisabled = computed(() => {
+    if (this.store.loading()) return true;
+    const applied = this.store.lastAppliedFiltersKey();
+    if (applied === null) return false;
+    const key = logFiltersKey(this.buildFiltersFromForm(this.rawFilterFormValues() ?? {}));
+    return key === applied;
   });
 
   /** No summary yet, or repository has zero log entries — show empty-state only. */
@@ -51,20 +67,33 @@ export class LogsPageComponent implements OnInit {
   }
 
   onApplyFilters(): void {
-    const raw = this.filterForm.value;
-    const filters: LogFilters = {};
-
-    if (raw.severity) filters.severity = raw.severity as LogSeverity;
-    if (raw.search?.trim()) filters.search = raw.search.trim();
-    if (raw.from) filters.from = new Date(raw.from).toISOString();
-    if (raw.to) filters.to = new Date(raw.to).toISOString();
-
-    this.store.loadLogs(filters);
+    this.store.loadLogs(this.buildFiltersFromForm(this.filterForm.getRawValue()));
   }
 
   onClearFilters(): void {
     this.filterForm.reset({ severity: '', search: '', from: '', to: '' });
     this.store.loadLogs({});
+  }
+
+  private buildFiltersFromForm(raw: Record<string, unknown>): LogFilters {
+    const filters: LogFilters = {};
+    const severity = raw['severity'];
+    if (typeof severity === 'string' && severity) {
+      filters.severity = severity as LogSeverity;
+    }
+    const search = raw['search'];
+    if (typeof search === 'string' && search.trim()) {
+      filters.search = search.trim();
+    }
+    const from = raw['from'];
+    if (typeof from === 'string' && from) {
+      filters.from = new Date(from).toISOString();
+    }
+    const to = raw['to'];
+    if (typeof to === 'string' && to) {
+      filters.to = new Date(to).toISOString();
+    }
+    return filters;
   }
 
   formatTimestamp(iso: string): string {

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { LogsStore } from './logs.store';
+import { LogsStore, logFiltersKey } from './logs.store';
 import { LogsApiService } from './logs-api.service';
 import { LogEntry, LogsSummaryResponse } from './logs.types';
 
@@ -45,6 +45,7 @@ describe('LogsStore', () => {
       expect(store.summary()).toBeNull();
       expect(store.parseErrors()).toEqual([]);
       expect(store.logQueryActive()).toBe(false);
+      expect(store.lastAppliedFiltersKey()).toBeNull();
     });
   });
 
@@ -58,6 +59,7 @@ describe('LogsStore', () => {
       expect(store.logs()).toEqual(MOCK_ENTRIES);
       expect(store.logQueryActive()).toBe(true);
       expect(store.loading()).toBe(false);
+      expect(store.lastAppliedFiltersKey()).toBe(logFiltersKey({}));
     });
 
     it('sets logs signal from the API response and clears loading', () => {
@@ -68,6 +70,7 @@ describe('LogsStore', () => {
       expect(store.logs()).toEqual(MOCK_ENTRIES);
       expect(store.loading()).toBe(false);
       expect(store.logQueryActive()).toBe(true);
+      expect(store.lastAppliedFiltersKey()).toBe(logFiltersKey({ severity: 'INFO' }));
     });
 
     it('sets loading to true while waiting, then clears it on success', () => {
@@ -96,6 +99,20 @@ describe('LogsStore', () => {
 
       expect(store.errorMessage()).toBe('Failed to load logs.');
     });
+
+    it('leaves lastAppliedFiltersKey unchanged when getLogs fails after a prior success', () => {
+      apiSpy.getLogs.mockReturnValueOnce(of({ items: MOCK_ENTRIES, total: 2 }));
+      store.loadLogs({});
+      expect(store.lastAppliedFiltersKey()).toBe(logFiltersKey({}));
+
+      apiSpy.getLogs.mockReturnValueOnce(
+        throwError(() => ({ error: { error: 'Server error' } }))
+      );
+      store.loadLogs({ search: 'nope' });
+
+      expect(store.errorMessage()).toBe('Server error');
+      expect(store.lastAppliedFiltersKey()).toBe(logFiltersKey({}));
+    });
   });
 
   describe('importLogs()', () => {
@@ -112,6 +129,7 @@ describe('LogsStore', () => {
       expect(apiSpy.getLogs).toHaveBeenCalledWith({});
       expect(store.logs()).toEqual(MOCK_ENTRIES);
       expect(store.loading()).toBe(false);
+      expect(store.lastAppliedFiltersKey()).toBe(logFiltersKey({}));
     });
 
     it('refreshes summary and skips getLogs when import succeeds but total is 0', () => {

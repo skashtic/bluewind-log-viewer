@@ -13,6 +13,7 @@ function buildStoreSpy() {
     loading: signal(false),
     errorMessage: signal(null),
     logQueryActive: signal(false),
+    lastAppliedFiltersKey: signal<string | null>(null),
     loadLogs: vi.fn(),
     loadSummary: vi.fn(),
     loadErrors: vi.fn(),

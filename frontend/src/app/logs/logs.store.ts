@@ -8,6 +8,18 @@ import {
 } from './logs.types';
 import { defer, retry } from 'rxjs';
 
+/** Stable string for comparing applied filter payloads (empty fields omitted). */
+export function logFiltersKey(filters: LogFilters): string {
+  const normalized: LogFilters = {};
+  if (filters.severity) normalized.severity = filters.severity;
+  if (filters.search != null && filters.search.trim() !== '') {
+    normalized.search = filters.search.trim();
+  }
+  if (filters.from) normalized.from = filters.from;
+  if (filters.to) normalized.to = filters.to;
+  return JSON.stringify(normalized);
+}
+
 @Injectable({ providedIn: 'root' })
 export class LogsStore {
   private readonly api = inject(LogsApiService);
@@ -18,6 +30,8 @@ export class LogsStore {
   readonly loading = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly logQueryActive = signal(false);
+  /** Set after each successful `loadLogs` (including auto-load and import). `null` until first success. */
+  readonly lastAppliedFiltersKey = signal<string | null>(null);
 
   importLogs(): void {
     this.loading.set(true);
@@ -59,6 +73,7 @@ export class LogsStore {
     this.api.getLogs(filters).subscribe({
       next: (response) => {
         this.logs.set(response.items);
+        this.lastAppliedFiltersKey.set(logFiltersKey(filters));
         this.loading.set(false);
       },
       error: (err) => {
