@@ -185,16 +185,17 @@ describe("parseLines", () => {
       expect(errors[0].reason).toBe("INVALID_TIMESTAMP");
     });
 
-    it("reports INVALID_TIMESTAMP for a broken timestamp like '101645' without colons", () => {
+    it("normalizes a compact 6-digit time in a full known-severity header to HH:mm:ss", () => {
       const { entries, errors } = parseLines([
         "2023-07-04 101645 [WARNING] Invalid input received.",
       ]);
 
-      expect(entries).toHaveLength(0);
-      expect(errors).toHaveLength(1);
-      expect(errors[0].reason).toBe("INVALID_TIMESTAMP");
-      expect(errors[0].rawLine).toBe(
-        "2023-07-04 101645 [WARNING] Invalid input received."
+      expect(errors).toHaveLength(0);
+      expect(entries).toHaveLength(1);
+      expect(entries[0].severity).toBe("WARNING");
+      expect(entries[0].message).toBe("Invalid input received.");
+      expect(entries[0].timestamp).toBe(
+        new Date("2023-07-04 10:16:45").toISOString()
       );
     });
   });
@@ -299,6 +300,26 @@ describe("parseLines", () => {
   // ─── Embedded header normalization ───────────────────────────────────────
 
   describe("embedded header normalization", () => {
+    it("splits concatenated INFO and compact-time WARNING and appends continuation to WARNING", () => {
+      const { entries, errors } = parseLines([
+        "2023-07-04 10:15:23 [INFO] User logged in john.doe@example.com2023-07-04 101645 [WARNING] Invalid input received from client Request payload is missing",
+        "required field.",
+      ]);
+
+      expect(errors).toHaveLength(0);
+      expect(entries).toHaveLength(2);
+      expect(entries[0].severity).toBe("INFO");
+      expect(entries[0].message).toBe("User logged in john.doe@example.com");
+      expect(entries[0].message).not.toContain("WARNING");
+      expect(entries[1].severity).toBe("WARNING");
+      expect(entries[1].timestamp).toBe(
+        new Date("2023-07-04 10:16:45").toISOString()
+      );
+      expect(entries[1].message).toBe(
+        "Invalid input received from client Request payload is missing\nrequired field."
+      );
+    });
+
     it("splits two concatenated valid log entries into two separate entries", () => {
       const { entries, errors } = parseLines([
         "2023-07-04 10:15:23 [INFO] User logged in2023-07-04 10:18:02 [ERROR] Database failed.",
@@ -392,14 +413,18 @@ describe("parseLines", () => {
 
       const { entries, errors } = parseLines(lines);
 
-      expect(entries).toHaveLength(2);
+      expect(entries).toHaveLength(3);
       expect(entries[0].severity).toBe("INFO");
-      expect(entries[1].severity).toBe("ERROR");
-      expect(entries[1].message).toBe("Database failed.\n  caused by network error");
+      expect(entries[1].severity).toBe("WARNING");
+      expect(entries[1].message).toBe("Corrupted timestamp.");
+      expect(entries[1].timestamp).toBe(
+        new Date("2023-07-04 10:16:45").toISOString()
+      );
+      expect(entries[2].severity).toBe("ERROR");
+      expect(entries[2].message).toBe("Database failed.\n  caused by network error");
 
-      expect(errors).toHaveLength(4);
+      expect(errors).toHaveLength(3);
       expect(errors.map((e) => e.reason)).toEqual([
-        "INVALID_TIMESTAMP",
         "UNSUPPORTED_SEVERITY",
         "ORPHAN_CONTINUATION_LINE",
         "INVALID_TIMESTAMP",
@@ -420,7 +445,7 @@ describe("parseLines", () => {
       }
 
       const malformedLines = [
-        "2023-07-04 101645 [WARNING] Bad timestamp format.",       // INVALID_TIMESTAMP
+        "2023-07-04 101645 [WARNING] Bad timestamp format.",       // now valid (compact time)
         "2023-02-30 10:00:00 [ERROR] Impossible date.",            // INVALID_TIMESTAMP
         "orphan continuation with no header",                       // ORPHAN_CONTINUATION_LINE
         "2023-07-04 not-a-time no-brackets here",                  // INVALID_FORMAT
@@ -430,10 +455,9 @@ describe("parseLines", () => {
       const allLines = [...validLines, ...malformedLines];
       const { entries, errors } = parseLines(allLines);
 
-      expect(entries).toHaveLength(995);
-      expect(errors).toHaveLength(5);
+      expect(entries).toHaveLength(996);
+      expect(errors).toHaveLength(4);
       expect(errors.map((e) => e.reason)).toEqual([
-        "INVALID_TIMESTAMP",
         "INVALID_TIMESTAMP",
         "ORPHAN_CONTINUATION_LINE",
         "INVALID_FORMAT",

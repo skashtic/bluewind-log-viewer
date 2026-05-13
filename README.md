@@ -182,8 +182,8 @@ The parser is strict and does not guess or auto-correct corrupted data:
 
 - Malformed lines are always reported as `ParseError` objects — they are never silently dropped.
 - Each parse error includes `lineNumber`, `rawLine`, and one of four explicit reasons: `INVALID_FORMAT`, `INVALID_TIMESTAMP`, `UNSUPPORTED_SEVERITY`, `ORPHAN_CONTINUATION_LINE`.
-- Corrupted timestamps (e.g. `101645` instead of `10:16:45`) are not auto-corrected — the line is reported as a parse error.
-- The only normalization performed is splitting a line where a recognisable log header (`YYYY-MM-DD HH:MM:SS [SEVERITY]`) appears after position 0. This is safe and minimal — it does not modify message content.
+- In a full log header with a known severity, a **compact** 6-digit time (`HHmmss`, e.g. `101645`) is normalized to `HH:mm:ss` (`10:16:45`). Other malformed time tokens are still reported as `INVALID_TIMESTAMP`.
+- A line may be split where a second recognisable known-severity header appears (after position 0), using either `YYYY-MM-DD HH:MM:SS [SEVERITY]` or `YYYY-MM-DD HHmmss [SEVERITY]`. Message text outside those splits is preserved; continuation lines are still appended to the preceding **valid** entry only.
 
 ### Intentional simplifications (current step)
 
