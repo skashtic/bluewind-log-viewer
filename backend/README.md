@@ -12,26 +12,27 @@ Node.js, TypeScript, Express, Jest.
 
 ```bash
 npm install
-npm run dev       # ts-node-dev, port 3000, auto-reload
+npm run dev       # ts-node-dev, port 3000, auto-reload (runs from src/)
 npm run build     # tsc → dist/
-npm start         # node dist/server.js
+npm start         # runs `npm run build` first (prestart), then node dist/server.js
 npm test          # Jest
 ```
 
 ## Request flow
 
 1. **`POST /api/logs/import`** — Read **`backend/data/log.txt`** via the file-system provider, parse every line, write **entries** and **parse errors** into the in-memory repository.
-2. **`GET /api/logs/summary`**, **`GET /api/logs/errors`**, **`GET /api/logs`** — Read only from memory (no file I/O on these paths).
+2. **`GET /api/logs/summary`**, **`GET /api/logs/errors`**, **`GET /api/logs`**, **`POST /api/logs/reset`** — Read or clear only from memory (no file I/O on these paths).
 
 ## Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/health` | `{ "status": "ok" }` |
-| `POST` | `/api/logs/import` | Import from `backend/data/log.txt` |
-| `GET` | `/api/logs` | Optional query: `severity`, `search`, `from`, `to` (ISO) |
-| `GET` | `/api/logs/summary` | Totals by severity |
-| `GET` | `/api/logs/errors` | Parse errors from last import |
+| Method | Path                | Description                                                     |
+| ------ | ------------------- | --------------------------------------------------------------- |
+| `GET`  | `/api/health`       | `{ "status": "ok" }`                                            |
+| `POST` | `/api/logs/import`  | Import from `backend/data/log.txt`                              |
+| `POST` | `/api/logs/reset`   | Clear in-memory entries + parse errors (file on disk unchanged) |
+| `GET`  | `/api/logs`         | Optional query: `severity`, `search`, `from`, `to` (ISO)        |
+| `GET`  | `/api/logs/summary` | Totals by severity                                              |
+| `GET`  | `/api/logs/errors`  | Parse errors from last import                                   |
 
 ## Parser (behaviour)
 

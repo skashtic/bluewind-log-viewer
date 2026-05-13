@@ -75,3 +75,8 @@ export function getLogsSummary(): LogsSummaryResponse {
 export function getParseErrors(): ParseError[] {
   return repository.getErrors();
 }
+
+export function resetImportedLogs(): { status: "reset" } {
+  repository.clear();
+  return { status: "reset" };
+}

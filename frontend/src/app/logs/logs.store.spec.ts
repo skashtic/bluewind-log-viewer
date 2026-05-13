@@ -20,6 +20,7 @@ function buildApiSpy() {
     getLogs: vi.fn(),
     getSummary: vi.fn(),
     getErrors: vi.fn(),
+    reset: vi.fn(),
   };
 }
 
@@ -198,6 +199,31 @@ describe('LogsStore', () => {
       store.loadErrors();
 
       expect(store.parseErrors()).toEqual(errors);
+    });
+  });
+
+  describe('resetDemoData()', () => {
+    it('calls reset API and clears logs, summary, filters key, and query state', () => {
+      apiSpy.reset.mockReturnValue(of({ status: 'reset' }));
+      store.summary.set(MOCK_SUMMARY);
+      store.logs.set(MOCK_ENTRIES);
+      store.parseErrors.set([{ lineNumber: 1, rawLine: 'x', reason: 'No match' }]);
+      store.logQueryActive.set(true);
+      store.lastAppliedFiltersKey.set('{}');
+
+      store.resetDemoData();
+
+      expect(apiSpy.reset).toHaveBeenCalledTimes(1);
+      expect(store.logs()).toEqual([]);
+      expect(store.parseErrors()).toEqual([]);
+      expect(store.summary()).toEqual({
+        total: 0,
+        bySeverity: { INFO: 0, WARNING: 0, ERROR: 0, DEBUG: 0 },
+      });
+      expect(store.logQueryActive()).toBe(false);
+      expect(store.lastAppliedFiltersKey()).toBeNull();
+      expect(store.loading()).toBe(false);
+      expect(store.errorMessage()).toBeNull();
     });
   });
 });

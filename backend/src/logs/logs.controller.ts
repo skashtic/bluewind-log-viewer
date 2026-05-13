@@ -1,18 +1,13 @@
-import { Router, Request, Response, NextFunction } from "express";
-import {
-  importLogs,
-  getLogs,
-  getLogsSummary,
-  getParseErrors,
-} from "./logs.service";
-import { FileSystemLogSourceProvider } from "./file-system-log-source.provider";
-import { LogFilters, LogSeverity } from "./logs.types";
+import { Router, Request, Response, NextFunction } from 'express';
+import { importLogs, getLogs, getLogsSummary, getParseErrors, resetImportedLogs } from './logs.service';
+import { FileSystemLogSourceProvider } from './file-system-log-source.provider';
+import { LogFilters, LogSeverity } from './logs.types';
 
-const VALID_SEVERITIES: LogSeverity[] = ["INFO", "WARNING", "ERROR", "DEBUG"];
+const VALID_SEVERITIES: LogSeverity[] = ['INFO', 'WARNING', 'ERROR', 'DEBUG'];
 
 const router = Router();
 
-router.post("/import", async (_req: Request, res: Response, next: NextFunction) => {
+router.post('/import', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const source = new FileSystemLogSourceProvider();
     const result = await importLogs(source);
@@ -22,13 +17,21 @@ router.post("/import", async (_req: Request, res: Response, next: NextFunction) 
   }
 });
 
-router.get("/", (req: Request, res: Response, next: NextFunction) => {
+router.post('/reset', (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(resetImportedLogs());
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/', (req: Request, res: Response, next: NextFunction) => {
   try {
     const { severity, search, from, to } = req.query;
 
     if (severity !== undefined && !VALID_SEVERITIES.includes(severity as LogSeverity)) {
       res.status(400).json({
-        error: `Invalid severity value. Allowed values: ${VALID_SEVERITIES.join(", ")}`,
+        error: `Invalid severity value. Allowed values: ${VALID_SEVERITIES.join(', ')}`,
       });
       return;
     }
@@ -56,7 +59,7 @@ router.get("/", (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-router.get("/summary", (_req: Request, res: Response, next: NextFunction) => {
+router.get('/summary', (_req: Request, res: Response, next: NextFunction) => {
   try {
     res.json(getLogsSummary());
   } catch (err) {
@@ -64,7 +67,7 @@ router.get("/summary", (_req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-router.get("/errors", (_req: Request, res: Response, next: NextFunction) => {
+router.get('/errors', (_req: Request, res: Response, next: NextFunction) => {
   try {
     res.json(getParseErrors());
   } catch (err) {
