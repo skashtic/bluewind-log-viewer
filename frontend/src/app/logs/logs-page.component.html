@@ -6,6 +6,14 @@
         <button type="button" class="btn btn-primary" (click)="onImport()" [disabled]="store.loading()">
           Import Logs
         </button>
+        <button
+          type="button"
+          class="btn btn-reset-demo"
+          (click)="onResetDemoData()"
+          [disabled]="resetDemoDisabled()"
+        >
+          ⚠ Reset Demo Data
+        </button>
         @if (store.loading()) {
           <span class="spinner" aria-label="Loading…"></span>
         }

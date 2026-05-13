@@ -46,6 +46,8 @@ export class LogsPageComponent implements OnInit {
     return s === null || s.total === 0;
   });
 
+  readonly resetDemoDisabled = computed(() => this.store.loading());
+
   constructor() {
     effect(() => {
       const s = this.store.summary();
@@ -64,6 +66,12 @@ export class LogsPageComponent implements OnInit {
 
   onImport(): void {
     this.store.importLogs();
+  }
+
+  onResetDemoData(): void {
+    this.store.resetDemoData(() => {
+      this.filterForm.reset({ severity: '', search: '', from: '', to: '' });
+    });
   }
 
   onApplyFilters(): void {

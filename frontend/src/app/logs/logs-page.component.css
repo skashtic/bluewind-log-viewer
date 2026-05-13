@@ -31,6 +31,28 @@
   margin-left: auto;
 }
 
+.btn-reset-demo {
+  padding: 0.45rem 0.85rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-reset-demo:not(:disabled):hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.btn-reset-demo:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ─── Empty state (no logs yet) ─────────────────────────── */
 
 .empty-state-wrap {

@@ -1,4 +1,4 @@
-import { getLogs } from "../logs.service";
+import { getLogs, getLogsSummary, resetImportedLogs } from "../logs.service";
 import * as repository from "../in-memory-logs.repository";
 import { LogEntry } from "../logs.types";
 
@@ -121,5 +121,23 @@ describe("getLogs filtering", () => {
 
       expect(total).toBe(0);
     });
+  });
+});
+
+describe("resetImportedLogs", () => {
+  it("clears entries so summary and getLogs return empty", () => {
+    expect(getLogsSummary().total).toBe(4);
+
+    expect(resetImportedLogs()).toEqual({ status: "reset" });
+
+    expect(getLogsSummary().total).toBe(0);
+    expect(getLogsSummary().bySeverity).toEqual({
+      INFO: 0,
+      WARNING: 0,
+      ERROR: 0,
+      DEBUG: 0,
+    });
+    expect(getLogs({}).total).toBe(0);
+    expect(repository.getErrors()).toEqual([]);
   });
 });

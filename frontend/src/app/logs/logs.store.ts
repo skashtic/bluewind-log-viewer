@@ -33,6 +33,11 @@ export class LogsStore {
   /** Set after each successful `loadLogs` (including auto-load and import). `null` until first success. */
   readonly lastAppliedFiltersKey = signal<string | null>(null);
 
+  private readonly emptySummary: LogsSummaryResponse = {
+    total: 0,
+    bySeverity: { INFO: 0, WARNING: 0, ERROR: 0, DEBUG: 0 },
+  };
+
   importLogs(): void {
     this.loading.set(true);
     this.errorMessage.set(null);
@@ -94,6 +99,27 @@ export class LogsStore {
     this.api.getErrors().subscribe({
       next: (data) => this.parseErrors.set(data),
       error: () => {},
+    });
+  }
+
+  resetDemoData(onComplete?: () => void): void {
+    this.loading.set(true);
+    this.errorMessage.set(null);
+
+    this.api.reset().subscribe({
+      next: () => {
+        this.logs.set([]);
+        this.parseErrors.set([]);
+        this.summary.set(this.emptySummary);
+        this.logQueryActive.set(false);
+        this.lastAppliedFiltersKey.set(null);
+        this.loading.set(false);
+        onComplete?.();
+      },
+      error: (err) => {
+        this.errorMessage.set(err?.error?.error ?? 'Reset failed.');
+        this.loading.set(false);
+      },
     });
   }
 }

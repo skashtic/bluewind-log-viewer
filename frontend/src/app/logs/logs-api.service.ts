@@ -17,6 +17,10 @@ export class LogsApiService {
     return this.http.post<ImportResponse>('/api/logs/import', null);
   }
 
+  reset(): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>('/api/logs/reset', null);
+  }
+
   getLogs(filters: LogFilters): Observable<LogsResponse> {
     let params = new HttpParams();
 

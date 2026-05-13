@@ -4,9 +4,9 @@ Log viewer for a **BlueWind Medical** home assignment: import a sample log file 
 
 ## Stack
 
-| Layer    | Technology |
-|----------|------------|
-| Backend  | Node.js, TypeScript, Express |
+| Layer    | Technology                                                                     |
+| -------- | ------------------------------------------------------------------------------ |
+| Backend  | Node.js, TypeScript, Express                                                   |
 | Frontend | Angular 21 (standalone components), Signals, Vitest (via `ng test`), plain CSS |
 
 Quick references: [backend/README.md](backend/README.md) · [frontend/README.md](frontend/README.md)
@@ -102,8 +102,8 @@ Then open `http://localhost:3000` (default `PORT`). This path is optional and do
 
 1. Start backend and frontend (root `npm run dev`, or the two folders separately as above).
 2. Open `http://localhost:4200`.
-3. If the repository has no parsed entries yet, use **Import Logs** (empty-state card or header). The backend reads **`backend/data/log.txt`**, parses lines, stores results in memory, and returns an import summary.
-4. After a successful import (or when data already exists from a prior import), the UI refreshes the summary and **loads the full log list** from `GET /api/logs` with no filters.
+3. On load (and after a browser refresh), the UI reads **`GET /api/logs/summary`** and **`GET /api/logs/errors`**. If the server still has imported data in memory, the main view appears again; if the repository was cleared (**Reset Demo Data** or a new backend process), you see the empty state until you **Import Logs**.
+4. Use **Import Logs** to read **`backend/data/log.txt`**, parse, and store in memory (or re-import after a reset). When import completes, the summary updates and the full list loads from `GET /api/logs` with no filters.
 5. Use **filters** (severity, search, date range) and **Apply Filters** to narrow results; **Clear** resets filters and reloads all entries. **Apply** is dimmed when the form matches the last successful load.
 6. **Parse errors** from the last import appear in a separate section when present.
 
@@ -111,13 +111,18 @@ Then open `http://localhost:3000` (default `PORT`). This path is optional and do
 
 ## API (summary)
 
-| Method | Path | Role |
-|--------|------|------|
-| `GET` | `/api/health` | Liveness: `{ "status": "ok" }` |
-| `POST` | `/api/logs/import` | Read `backend/data/log.txt`, parse, replace in-memory entries + parse errors |
-| `GET` | `/api/logs` | Filtered entries (query params optional; empty means no filter on that axis) |
-| `GET` | `/api/logs/summary` | Total count and counts by severity |
-| `GET` | `/api/logs/errors` | Parse errors from the last import |
+| Method | Path                | Role                                                                                     |
+| ------ | ------------------- | ---------------------------------------------------------------------------------------- |
+| `GET`  | `/api/health`       | Liveness: `{ "status": "ok" }`                                                           |
+| `POST` | `/api/logs/import`  | Read `backend/data/log.txt`, parse, replace in-memory entries + parse errors             |
+| `POST` | `/api/logs/reset`   | Clear in-memory parsed entries and parse errors (does not change `backend/data/log.txt`) |
+| `GET`  | `/api/logs`         | Filtered entries (query params optional; empty means no filter on that axis)             |
+| `GET`  | `/api/logs/summary` | Total count and counts by severity                                                       |
+| `GET`  | `/api/logs/errors`  | Parse errors from the last import                                                        |
+
+The UI exposes **Reset Demo Data** for the same in-memory clear as `POST /api/logs/reset`; the sample log file on disk is unchanged.
+
+If **`POST /api/logs/reset` returns 404** while other `/api/logs/*` calls work, the Node process is almost certainly an **old build** (`dist/` out of date). From `backend`, run **`npm run build`** (or use **`npm run dev`**, which runs TypeScript from `src`), stop any other server on port **3000**, then start again. **`npm start`** in `backend` now runs **`prestart`** so `dist` is rebuilt automatically before `node dist/server.js`.
 
 ### `POST /api/logs/import`
 
@@ -136,11 +141,11 @@ Response shape (example numbers):
 
 ### `GET /api/logs` (optional query parameters)
 
-| Param | Description |
-|-------|-------------|
-| `severity` | `INFO` \| `WARNING` \| `ERROR` \| `DEBUG` |
-| `search` | Case-insensitive substring on `message` |
-| `from`, `to` | ISO 8601 — filter by entry timestamp |
+| Param        | Description                               |
+| ------------ | ----------------------------------------- |
+| `severity`   | `INFO` \| `WARNING` \| `ERROR` \| `DEBUG` |
+| `search`     | Case-insensitive substring on `message`   |
+| `from`, `to` | ISO 8601 — filter by entry timestamp      |
 
 Response: `{ "items": [ … ], "total": <number> }` with `id`, `lineNumber`, `timestamp` (ISO), `severity`, `message`.
 
@@ -174,11 +179,11 @@ Parsing runs **only on import**, not on every `GET`.
 
 ## Testing
 
-| Where | Command |
-|-------|---------|
-| Backend | `cd backend && npm test` |
-| Frontend | `cd frontend && npm test` or `npm run test:ci` |
-| Root | `npm test` (backend Jest, then frontend `test:ci`) |
+| Where    | Command                                            |
+| -------- | -------------------------------------------------- |
+| Backend  | `cd backend && npm test`                           |
+| Frontend | `cd frontend && npm test` or `npm run test:ci`     |
+| Root     | `npm test` (backend Jest, then frontend `test:ci`) |
 
 ---
 
@@ -190,7 +195,7 @@ Parsing runs **only on import**, not on every `GET`.
 
 ---
 
-## Future production considerations *(not in this codebase)*
+## Future production considerations _(not in this codebase)_
 
 - Point `ILogSourceProvider` at S3 (or similar) with appropriate credentials and SDK.
 - Persist parsed data in PostgreSQL/SQLite and add **pagination and sorting** for large result sets.

@@ -18,6 +18,7 @@ function buildStoreSpy() {
     loadSummary: vi.fn(),
     loadErrors: vi.fn(),
     importLogs: vi.fn(),
+    resetDemoData: vi.fn(),
   };
 }
 
@@ -46,11 +47,10 @@ describe('LogsPageComponent', () => {
     expect(button.textContent?.trim()).toBe('Import Logs');
   });
 
-  it('calls loadSummary and loadErrors on init but does not load logs', () => {
+  it('calls loadSummary and loadErrors on init so refresh matches server memory (logs load via effect when total > 0)', () => {
     const fixture = TestBed.createComponent(LogsPageComponent);
     fixture.detectChanges();
 
-    expect(storeSpy.loadLogs).not.toHaveBeenCalled();
     expect(storeSpy.loadSummary).toHaveBeenCalledTimes(1);
     expect(storeSpy.loadErrors).toHaveBeenCalledTimes(1);
   });
@@ -77,5 +77,27 @@ describe('LogsPageComponent', () => {
     clearButton.click();
 
     expect(storeSpy.loadLogs).toHaveBeenCalledWith({});
+  });
+
+  it('does not show Reset Demo Data in the header while the empty state is shown', () => {
+    const fixture = TestBed.createComponent(LogsPageComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.btn-reset-demo')).toBeNull();
+  });
+
+  it('calls store.resetDemoData when Reset Demo Data is clicked in the header', () => {
+    storeSpy.summary.set({
+      total: 1,
+      bySeverity: { INFO: 1, WARNING: 0, ERROR: 0, DEBUG: 0 },
+    });
+    const fixture = TestBed.createComponent(LogsPageComponent);
+    fixture.detectChanges();
+
+    const resetButton: HTMLButtonElement = fixture.nativeElement.querySelector('.btn-reset-demo');
+    expect(resetButton).toBeTruthy();
+    resetButton.click();
+
+    expect(storeSpy.resetDemoData).toHaveBeenCalledTimes(1);
   });
 });
