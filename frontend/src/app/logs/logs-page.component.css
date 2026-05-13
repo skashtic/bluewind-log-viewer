@@ -31,6 +31,52 @@
   margin-left: auto;
 }
 
+/* ─── Empty state (no logs yet) ─────────────────────────── */
+
+.empty-state-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.empty-state-card {
+  max-width: 28rem;
+  width: 100%;
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.empty-state-card-title {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.empty-state-card-text {
+  margin: 0 0 0.65rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.empty-state-card-hint {
+  margin: 0.75rem 0 1.25rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.empty-state-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
 /* ─── Buttons ────────────────────────────────────────────── */
 
 .btn {

@@ -8,15 +8,6 @@ import {
 } from './logs.types';
 import { defer, retry } from 'rxjs';
 
-function hasActiveLogFilters(f: LogFilters): boolean {
-  return !!(
-    f.severity ||
-    (f.search != null && f.search.trim() !== '') ||
-    f.from ||
-    f.to
-  );
-}
-
 @Injectable({ providedIn: 'root' })
 export class LogsStore {
   private readonly api = inject(LogsApiService);
@@ -38,9 +29,20 @@ export class LogsStore {
       .pipe(retry(importRetries))
       .subscribe({
         next: () => {
-          this.loadSummary();
           this.loadErrors();
-          this.loading.set(false);
+          this.api.getSummary().subscribe({
+            next: (data) => {
+              this.summary.set(data);
+              if (data.total > 0) {
+                this.loadLogs({});
+              } else {
+                this.loading.set(false);
+              }
+            },
+            error: () => {
+              this.loading.set(false);
+            },
+          });
         },
         error: (err) => {
           this.errorMessage.set(err?.error?.error ?? 'Import failed.');
@@ -50,12 +52,6 @@ export class LogsStore {
   }
 
   loadLogs(filters: LogFilters): void {
-    if (!hasActiveLogFilters(filters)) {
-      this.logs.set([]);
-      this.logQueryActive.set(false);
-      return;
-    }
-
     this.loading.set(true);
     this.errorMessage.set(null);
     this.logQueryActive.set(true);

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, computed, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { LogsStore } from './logs.store';
@@ -23,6 +23,23 @@ export class LogsPageComponent implements OnInit {
     from: [''],
     to: [''],
   });
+
+  /** No summary yet, or repository has zero log entries — show empty-state only. */
+  readonly showEmptyState = computed(() => {
+    const s = this.store.summary();
+    return s === null || s.total === 0;
+  });
+
+  constructor() {
+    effect(() => {
+      const s = this.store.summary();
+      if (s === null || s.total === 0) return;
+      if (this.store.logQueryActive()) return;
+      if (this.store.logs().length > 0) return;
+      if (this.store.loading()) return;
+      this.store.loadLogs({});
+    });
+  }
 
   ngOnInit(): void {
     this.store.loadSummary();

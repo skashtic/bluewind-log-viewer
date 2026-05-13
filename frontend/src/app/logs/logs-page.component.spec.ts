@@ -3,11 +3,12 @@ import { signal } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { LogsPageComponent } from './logs-page.component';
 import { LogsStore } from './logs.store';
+import { LogsSummaryResponse } from './logs.types';
 
 function buildStoreSpy() {
   return {
     logs: signal([]),
-    summary: signal(null),
+    summary: signal<LogsSummaryResponse | null>(null),
     parseErrors: signal([]),
     loading: signal(false),
     errorMessage: signal(null),
@@ -64,6 +65,10 @@ describe('LogsPageComponent', () => {
   });
 
   it('calls store.loadLogs with empty filters when Clear is clicked', () => {
+    storeSpy.summary.set({
+      total: 1,
+      bySeverity: { INFO: 1, WARNING: 0, ERROR: 0, DEBUG: 0 },
+    });
     const fixture = TestBed.createComponent(LogsPageComponent);
     fixture.detectChanges();
 

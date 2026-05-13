@@ -49,11 +49,15 @@ describe('LogsStore', () => {
   });
 
   describe('loadLogs()', () => {
-    it('clears logs and skips the API when no filters are active', () => {
+    it('calls getLogs with empty filters and shows all entries returned', () => {
+      apiSpy.getLogs.mockReturnValue(of({ items: MOCK_ENTRIES, total: 2 }));
+
       store.loadLogs({});
-      expect(apiSpy.getLogs).not.toHaveBeenCalled();
-      expect(store.logs()).toEqual([]);
-      expect(store.logQueryActive()).toBe(false);
+
+      expect(apiSpy.getLogs).toHaveBeenCalledWith({});
+      expect(store.logs()).toEqual(MOCK_ENTRIES);
+      expect(store.logQueryActive()).toBe(true);
+      expect(store.loading()).toBe(false);
     });
 
     it('sets logs signal from the API response and clears loading', () => {
@@ -95,9 +99,26 @@ describe('LogsStore', () => {
   });
 
   describe('importLogs()', () => {
-    it('calls loadSummary and loadErrors after a successful import', () => {
+    it('refreshes summary, loads errors, then loads all logs when import succeeds and total > 0', () => {
       apiSpy.import.mockReturnValue(of({ summary: {} }));
       apiSpy.getSummary.mockReturnValue(of(MOCK_SUMMARY));
+      apiSpy.getErrors.mockReturnValue(of([]));
+      apiSpy.getLogs.mockReturnValue(of({ items: MOCK_ENTRIES, total: 2 }));
+
+      store.importLogs();
+
+      expect(apiSpy.getSummary).toHaveBeenCalledTimes(1);
+      expect(apiSpy.getErrors).toHaveBeenCalledTimes(1);
+      expect(apiSpy.getLogs).toHaveBeenCalledWith({});
+      expect(store.logs()).toEqual(MOCK_ENTRIES);
+      expect(store.loading()).toBe(false);
+    });
+
+    it('refreshes summary and skips getLogs when import succeeds but total is 0', () => {
+      apiSpy.import.mockReturnValue(of({ summary: {} }));
+      apiSpy.getSummary.mockReturnValue(
+        of({ total: 0, bySeverity: { INFO: 0, WARNING: 0, ERROR: 0, DEBUG: 0 } })
+      );
       apiSpy.getErrors.mockReturnValue(of([]));
 
       store.importLogs();
@@ -131,6 +152,7 @@ describe('LogsStore', () => {
       });
       apiSpy.getSummary.mockReturnValue(of(MOCK_SUMMARY));
       apiSpy.getErrors.mockReturnValue(of([]));
+      apiSpy.getLogs.mockReturnValue(of({ items: MOCK_ENTRIES, total: 2 }));
 
       store.importLogs();
 
