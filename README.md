@@ -1,71 +1,113 @@
 # Bluewind Log Viewer
 
-A log viewer application built as a home task assignment.
+Log viewer for a **BlueWind Medical** home assignment: import a sample log file on the server, parse lines into structured entries, and browse them through a small Angular UI and REST API.
 
 ## Stack
 
-- **Backend**: Node.js + TypeScript + Express
-- **Frontend**: Angular 21 (standalone components, Signals)
+| Layer    | Technology |
+|----------|------------|
+| Backend  | Node.js, TypeScript, Express |
+| Frontend | Angular 21 (standalone components), Signals, Vitest (via `ng test`), plain CSS |
+
+Quick references: [backend/README.md](backend/README.md) · [frontend/README.md](frontend/README.md)
 
 ---
 
-## Running the Backend
+## Repository structure
+
+```
+backend/
+  data/log.txt              # Default log file path (sample may be committed)
+  src/
+    server.ts, app.ts
+    logs/                   # Types, parser, file provider, in-memory repo, service, controller
+    middleware/
+frontend/
+  src/app/
+    app.ts, app.config.ts
+    logs/                   # LogsPageComponent, LogsStore, LogsApiService, types
+  proxy.conf.json           # Dev: proxies /api → http://127.0.0.1:3000
+package.json                # Root: run both apps, full build/test
+```
+
+---
+
+## Running the project
+
+### From the repository root
+
+Install dependencies once (root helper + both apps):
+
+```bash
+npm run install:all
+```
+
+Or manually: `npm install` at root, then `npm install` in `backend/` and `frontend/`.
+
+Start **backend** (port 3000) and **frontend** (port 4200) together:
+
+```bash
+npm install    # at root, if you have not yet (installs concurrently)
+npm run dev    # same as npm start
+```
+
+Build and test **both** packages:
+
+```bash
+npm run build
+npm test
+```
+
+### Backend only
 
 ```bash
 cd backend
 npm install
-npm run dev       # development server with auto-reload on port 3000
-npm run build     # compile TypeScript to dist/
-npm start         # run compiled output
+npm run dev       # dev server with reload, port 3000
+npm run build     # compile to backend/dist/
+npm start         # run node backend/dist/server.js
+npm test          # Jest
 ```
 
-Place your log file at `backend/data/log.txt` before calling the import endpoint.
-
----
-
-## Running the Frontend
+### Frontend only
 
 ```bash
 cd frontend
 npm install
-npm start     # dev server on http://localhost:4200 (proxies /api to backend port 3000)
-npm run build # production build to dist/
+npm start         # ng serve — http://localhost:4200, proxies /api to :3000
+npm run build
+npm test          # Vitest via Angular CLI (watch mode)
+npm run test:ci   # ng test --watch=false (used by root npm test)
 ```
 
-The frontend proxies all `/api/*` requests to the backend via `proxy.conf.json`. Both servers must run concurrently during development.
-
-**Run both from the repository root** (after `npm install` in `backend/` and `frontend/` as shown above):
-
-```bash
-npm install   # once at repo root (installs concurrently)
-npm run dev   # backend on :3000 + Angular on :4200
-```
-
-**Typical workflow:**
-
-1. Start servers: either `npm run dev` from the repo root, or separately `cd backend && npm run dev` and `cd frontend && npm start`
-2. Open `http://localhost:4200`
-3. Click **Import Logs** to parse `backend/data/log.txt` and populate the view
+During local development the app uses **relative `/api` URLs**; `proxy.conf.json` forwards them to the backend. For production with the API on another origin, a configurable base URL would be needed (not implemented here).
 
 ---
 
-## API Endpoints
+## Demo flow
 
-### GET /api/health
-
-Returns server health status.
-
-```json
-{ "status": "ok" }
-```
+1. Start backend and frontend (root `npm run dev`, or the two folders separately as above).
+2. Open `http://localhost:4200`.
+3. If the repository has no parsed entries yet, use **Import Logs** (empty-state card or header). The backend reads **`backend/data/log.txt`**, parses lines, stores results in memory, and returns an import summary.
+4. After a successful import (or when data already exists from a prior import), the UI refreshes the summary and **loads the full log list** from `GET /api/logs` with no filters.
+5. Use **filters** (severity, search, date range) and **Apply Filters** to narrow results; **Clear** resets filters and reloads all entries. **Apply** is dimmed when the form matches the last successful load.
+6. **Parse errors** from the last import appear in a separate section when present.
 
 ---
 
-### POST /api/logs/import
+## API (summary)
 
-Reads `backend/data/log.txt`, parses all log lines into structured entries, and stores them in the in-memory repository. Call this once before querying logs.
+| Method | Path | Role |
+|--------|------|------|
+| `GET` | `/api/health` | Liveness: `{ "status": "ok" }` |
+| `POST` | `/api/logs/import` | Read `backend/data/log.txt`, parse, replace in-memory entries + parse errors |
+| `GET` | `/api/logs` | Filtered entries (query params optional; empty means no filter on that axis) |
+| `GET` | `/api/logs/summary` | Total count and counts by severity |
+| `GET` | `/api/logs/errors` | Parse errors from the last import |
 
-Parsing happens here — not on every GET request.
+### `POST /api/logs/import`
+
+Response shape (example numbers):
 
 ```json
 {
@@ -78,117 +120,65 @@ Parsing happens here — not on every GET request.
 }
 ```
 
----
+### `GET /api/logs` (optional query parameters)
 
-### GET /api/logs
+| Param | Description |
+|-------|-------------|
+| `severity` | `INFO` \| `WARNING` \| `ERROR` \| `DEBUG` |
+| `search` | Case-insensitive substring on `message` |
+| `from`, `to` | ISO 8601 — filter by entry timestamp |
 
-Returns filtered log entries from the in-memory repository.
+Response: `{ "items": [ … ], "total": <number> }` with `id`, `lineNumber`, `timestamp` (ISO), `severity`, `message`.
 
-**Query parameters (all optional):**
+### `GET /api/logs/errors`
 
-| Param      | Type   | Description                                     |
-|------------|--------|-------------------------------------------------|
-| `severity` | string | One of: `INFO`, `WARNING`, `ERROR`, `DEBUG`     |
-| `search`   | string | Case-insensitive substring match on `message`   |
-| `from`     | string | ISO 8601 date — include entries at or after     |
-| `to`       | string | ISO 8601 date — include entries at or before    |
-
-```json
-{
-  "items": [
-    {
-      "id": "5",
-      "lineNumber": 14,
-      "timestamp": "2023-07-04T07:18:02.000Z",
-      "severity": "ERROR",
-      "message": "Database connection failed: Connection timeout."
-    }
-  ],
-  "total": 1
-}
-```
+Each item: `lineNumber`, `rawLine`, `reason` with one of: `INVALID_FORMAT`, `INVALID_TIMESTAMP`, `UNSUPPORTED_SEVERITY`, `ORPHAN_CONTINUATION_LINE`.
 
 ---
 
-### GET /api/logs/summary
+## Parser and import behavior
 
-Returns total count and breakdown by severity from the in-memory repository.
+- **Valid header** (known severity): `YYYY-MM-DD HH:mm:ss [SEVERITY]` message, or the same date with **compact** time `HHmmss` (exactly six digits) before `[SEVERITY]`.
+- **Supported severities:** `INFO`, `WARNING`, `ERROR`, `DEBUG`.
+- **Compact timestamps:** in the exact `HHmmss` form, values are normalized to `HH:mm:ss` **only inside a complete log header** with a known severity. **Other corrupted timestamps are not guessed or auto-corrected** (`INVALID_TIMESTAMP` where applicable).
+- **Malformed lines** do not fail the whole import; they are recorded and returned via `GET /api/logs/errors`.
+- **Continuation lines** (non-header text after a valid entry, with no intervening malformed line) are appended to that entry’s message. Otherwise orphan continuations get `ORPHAN_CONTINUATION_LINE`.
+- A physical line may contain **two concatenated headers**; the parser splits on a second recognised header (`… HH:mm:ss [SEVERITY]` or `… HHmmss [SEVERITY]`) so two entries can be produced from one line when appropriate.
 
-```json
-{
-  "total": 115,
-  "bySeverity": { "INFO": 60, "WARNING": 20, "ERROR": 30, "DEBUG": 5 }
-}
-```
-
----
-
-### GET /api/logs/errors
-
-Returns lines that could not be parsed during the last import.
-
-```json
-[
-  { "lineNumber": 14, "rawLine": "...", "reason": "Line does not match expected log format" }
-]
-```
+Parsing runs **only on import**, not on every `GET`.
 
 ---
 
-## Architecture
+## Architecture decisions
 
-```
-backend/
-├── data/
-│   └── log.txt                        # Log file to import (not committed)
-└── src/
-    ├── server.ts                      # Entry point — starts HTTP server
-    ├── app.ts                         # Express app setup, routes, middleware wiring
-    ├── logs/
-    │   ├── logs.types.ts              # Shared TypeScript types
-    │   ├── log-source.provider.ts     # ILogSourceProvider interface
-    │   ├── file-system-log-source.provider.ts  # Reads log.txt from disk
-    │   ├── log-parser.service.ts      # Parses raw lines into LogEntry + ParseError
-    │   ├── in-memory-logs.repository.ts        # In-memory store for entries and errors
-    │   ├── logs.service.ts            # Orchestrates import, filtering, summary
-    │   └── logs.controller.ts         # Route handlers and query param validation
-    └── middleware/
-        ├── error-handler.ts           # Central 500 error middleware
-        └── not-found-handler.ts       # 404 handler for unknown routes
+- **Log source:** `ILogSourceProvider` with a file-system implementation reading `backend/data/log.txt`. Replacing it (e.g. with S3) is a new provider class, not a rewrite of the HTTP layer.
+- **Storage:** Parsed entries and parse errors live in an **in-memory** module; swapping for a database means changing the repository implementation, not the route contracts shown here.
+- **Filtering:** Done in the backend over already-parsed data.
+- **Frontend:** `LogsApiService` performs HTTP calls; `LogsStore` coordinates import, summary, errors, and log loads using **Signals**.
 
-frontend/src/app/
-├── app.ts                             # Root component — renders LogsPageComponent
-├── app.config.ts                      # Bootstrap config — provides HttpClient
-└── logs/
-    ├── logs.types.ts                  # Frontend types mirroring backend shapes
-    ├── logs-api.service.ts            # HTTP calls only (import/getLogs/getSummary/getErrors)
-    ├── logs.store.ts                  # Signals-based state + orchestration
-    ├── logs-page.component.ts         # Thin component, reactive filter form
-    ├── logs-page.component.html       # Template: header, summary, filters, table, errors
-    └── logs-page.component.css        # Responsive plain CSS (grid + flex)
-```
+---
 
-### Architecture decisions
+## Testing
 
-- The file-system source is isolated behind `ILogSourceProvider`. Swapping it for an S3 provider later requires only a new class implementing that interface.
-- Parsed data is held in a module-level in-memory repository. It can later be replaced with SQLite or Postgres without touching the service or controller layers.
-- Parsing is triggered explicitly via `POST /api/logs/import`. GET endpoints read from the already-parsed repository — no file I/O on read.
-- Malformed lines do not crash the import; they are collected as `ParseError` objects and accessible via `GET /api/logs/errors`.
-- Continuation lines (plain text following a valid entry with no malformed line in between) are appended to the previous entry's message. If a malformed line appears between a valid entry and plain text, the plain text is reported as `ORPHAN_CONTINUATION_LINE` rather than silently attached to the wrong entry.
+| Where | Command |
+|-------|---------|
+| Backend | `cd backend && npm test` |
+| Frontend | `cd frontend && npm test` or `npm run test:ci` |
+| Root | `npm test` (backend Jest, then frontend `test:ci`) |
 
-### Parser error handling
+---
 
-The parser is strict and does not guess or auto-correct corrupted data:
+## Intentionally not implemented
 
-- Malformed lines are always reported as `ParseError` objects — they are never silently dropped.
-- Each parse error includes `lineNumber`, `rawLine`, and one of four explicit reasons: `INVALID_FORMAT`, `INVALID_TIMESTAMP`, `UNSUPPORTED_SEVERITY`, `ORPHAN_CONTINUATION_LINE`.
-- In a full log header with a known severity, a **compact** 6-digit time (`HHmmss`, e.g. `101645`) is normalized to `HH:mm:ss` (`10:16:45`). Other malformed time tokens are still reported as `INVALID_TIMESTAMP`.
-- A line may be split where a second recognisable known-severity header appears (after position 0), using either `YYYY-MM-DD HH:MM:SS [SEVERITY]` or `YYYY-MM-DD HHmmss [SEVERITY]`. Message text outside those splits is preserved; continuation lines are still appended to the preceding **valid** entry only.
+- No authentication, pagination, server-side sort options, queues, caching layer, or offline mode.
+- No cloud deployment, IAM, or AWS wiring in this repo.
+- No persistent database or S3 in the runtime path.
 
-### Intentional simplifications (current step)
+---
 
-- No database — repository is in-memory only; data is lost on server restart.
-- No S3 — `FileSystemLogSourceProvider` reads a local file.
-- Frontend state is Signals-only — no NgRx, no third-party state library.
-- No Angular Material or other UI libraries — plain CSS.
-- No authentication, caching, or queuing.
+## Future production considerations *(not in this codebase)*
+
+- Point `ILogSourceProvider` at S3 (or similar) with appropriate credentials and SDK.
+- Persist parsed data in PostgreSQL/SQLite and add **pagination and sorting** for large result sets.
+- Configure the frontend **API base URL** via environment for API and UI on different hosts.
+- Add authentication and a CI pipeline as product requirements dictate.
