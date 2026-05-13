@@ -187,6 +187,22 @@ Parsing runs **only on import**, not on every `GET`.
 
 ---
 
+## Review notes
+
+The implementation is focused on the requested scope: a local, fully runnable Angular + Node.js/Express application with clear client/server separation.
+
+As discussed, the solution uses the local file system as the log source instead of S3. The backend keeps the log source behind an `ILogSourceProvider` interface, so a future S3 provider can be added without changing the API or parser flow.
+
+The `main` branch keeps the frontend and backend logically separated and fully runnable locally. A separate `chore/hosted-demo-setup` branch was prepared for the hosted demo, where Express serves the Angular production build as static files. This was done only to simplify hosting under a single URL without CORS or separate API configuration.
+
+Most of the backend focus was on predictable parser behavior and graceful handling of malformed input. The parser handles valid log headers, compact `HHmmss` timestamps inside complete headers, concatenated log entries, continuation lines, unsupported severities, malformed timestamps, malformed structures, CRLF line endings, duplicate lines, and mixed valid/corrupted inputs. Malformed lines are reported as parse errors instead of failing the whole import.
+
+The backend unit tests focus mainly on parser reliability and filtering behavior, including edge cases rather than only the happy path.
+
+I also performed basic manual UI sanity checks on Chrome, Firefox, Opera, Chrome DevTools responsive mode, and three Android devices. The goal was to verify that the main import/filter/reset flow remains usable on desktop and mobile widths.
+
+I intentionally did not implement heavier production concerns such as authentication, persistent storage, queues, caching, rate limiting, virtual scrolling, or server-side pagination. For a larger production version, I would add these according to scale and product requirements rather than upfront.
+
 ## Intentionally not implemented
 
 - No authentication, pagination, server-side sort options, queues, caching layer, or offline mode.
