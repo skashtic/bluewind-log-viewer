@@ -34,12 +34,18 @@ npm run build # production build to dist/
 
 The frontend proxies all `/api/*` requests to the backend via `proxy.conf.json`. Both servers must run concurrently during development.
 
+**Run both from the repository root** (after `npm install` in `backend/` and `frontend/` as shown above):
+
+```bash
+npm install   # once at repo root (installs concurrently)
+npm run dev   # backend on :3000 + Angular on :4200
+```
+
 **Typical workflow:**
 
-1. Start the backend: `cd backend && npm run dev`
-2. Start the frontend: `cd frontend && npm start`
-3. Open `http://localhost:4200`
-4. Click **Import Logs** to parse `backend/data/log.txt` and populate the view
+1. Start servers: either `npm run dev` from the repo root, or separately `cd backend && npm run dev` and `cd frontend && npm start`
+2. Open `http://localhost:4200`
+3. Click **Import Logs** to parse `backend/data/log.txt` and populate the view
 
 ---
 

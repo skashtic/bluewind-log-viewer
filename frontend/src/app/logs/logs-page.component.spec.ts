@@ -11,6 +11,7 @@ function buildStoreSpy() {
     parseErrors: signal([]),
     loading: signal(false),
     errorMessage: signal(null),
+    logQueryActive: signal(false),
     loadLogs: vi.fn(),
     loadSummary: vi.fn(),
     loadErrors: vi.fn(),
@@ -43,11 +44,11 @@ describe('LogsPageComponent', () => {
     expect(button.textContent?.trim()).toBe('Import Logs');
   });
 
-  it('calls store.loadLogs, loadSummary, and loadErrors on init', () => {
+  it('calls loadSummary and loadErrors on init but does not load logs', () => {
     const fixture = TestBed.createComponent(LogsPageComponent);
     fixture.detectChanges();
 
-    expect(storeSpy.loadLogs).toHaveBeenCalledWith({});
+    expect(storeSpy.loadLogs).not.toHaveBeenCalled();
     expect(storeSpy.loadSummary).toHaveBeenCalledTimes(1);
     expect(storeSpy.loadErrors).toHaveBeenCalledTimes(1);
   });

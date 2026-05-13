@@ -1,0 +1,11 @@
+{
+  "name": "bluewind-log-viewer",
+  "private": true,
+  "description": "Root scripts to run backend and frontend together",
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev --prefix backend\" \"npm start --prefix frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

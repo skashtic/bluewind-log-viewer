@@ -25,7 +25,6 @@ export class LogsPageComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.store.loadLogs({});
     this.store.loadSummary();
     this.store.loadErrors();
   }

@@ -44,23 +44,32 @@ describe('LogsStore', () => {
       expect(store.errorMessage()).toBeNull();
       expect(store.summary()).toBeNull();
       expect(store.parseErrors()).toEqual([]);
+      expect(store.logQueryActive()).toBe(false);
     });
   });
 
   describe('loadLogs()', () => {
+    it('clears logs and skips the API when no filters are active', () => {
+      store.loadLogs({});
+      expect(apiSpy.getLogs).not.toHaveBeenCalled();
+      expect(store.logs()).toEqual([]);
+      expect(store.logQueryActive()).toBe(false);
+    });
+
     it('sets logs signal from the API response and clears loading', () => {
       apiSpy.getLogs.mockReturnValue(of({ items: MOCK_ENTRIES, total: 2 }));
 
-      store.loadLogs({});
+      store.loadLogs({ severity: 'INFO' });
 
       expect(store.logs()).toEqual(MOCK_ENTRIES);
       expect(store.loading()).toBe(false);
+      expect(store.logQueryActive()).toBe(true);
     });
 
     it('sets loading to true while waiting, then clears it on success', () => {
       apiSpy.getLogs.mockReturnValue(of({ items: [], total: 0 }));
 
-      store.loadLogs({});
+      store.loadLogs({ search: 'x' });
 
       expect(store.loading()).toBe(false);
     });
@@ -70,7 +79,7 @@ describe('LogsStore', () => {
         throwError(() => ({ error: { error: 'Server error' } }))
       );
 
-      store.loadLogs({});
+      store.loadLogs({ severity: 'ERROR' });
 
       expect(store.errorMessage()).toBe('Server error');
       expect(store.loading()).toBe(false);
@@ -79,16 +88,15 @@ describe('LogsStore', () => {
     it('falls back to a default error message when error body is missing', () => {
       apiSpy.getLogs.mockReturnValue(throwError(() => ({})));
 
-      store.loadLogs({});
+      store.loadLogs({ severity: 'DEBUG' });
 
       expect(store.errorMessage()).toBe('Failed to load logs.');
     });
   });
 
   describe('importLogs()', () => {
-    it('calls loadSummary, loadErrors, and loadLogs after a successful import', () => {
+    it('calls loadSummary and loadErrors after a successful import', () => {
       apiSpy.import.mockReturnValue(of({ summary: {} }));
-      apiSpy.getLogs.mockReturnValue(of({ items: [], total: 0 }));
       apiSpy.getSummary.mockReturnValue(of(MOCK_SUMMARY));
       apiSpy.getErrors.mockReturnValue(of([]));
 
@@ -96,17 +104,38 @@ describe('LogsStore', () => {
 
       expect(apiSpy.getSummary).toHaveBeenCalledTimes(1);
       expect(apiSpy.getErrors).toHaveBeenCalledTimes(1);
-      expect(apiSpy.getLogs).toHaveBeenCalledWith({});
+      expect(apiSpy.getLogs).not.toHaveBeenCalled();
+      expect(store.loading()).toBe(false);
     });
 
-    it('sets errorMessage on import failure', () => {
+    it('sets errorMessage on import failure after retries are exhausted', () => {
       apiSpy.import.mockReturnValue(
         throwError(() => ({ error: { error: 'Import failed.' } }))
       );
 
       store.importLogs();
 
+      expect(apiSpy.import).toHaveBeenCalledTimes(3);
       expect(store.errorMessage()).toBe('Import failed.');
+      expect(store.loading()).toBe(false);
+    });
+
+    it('succeeds without surfacing an error when a retry succeeds', () => {
+      let attempt = 0;
+      apiSpy.import.mockImplementation(() => {
+        attempt += 1;
+        if (attempt < 2) {
+          return throwError(() => ({}));
+        }
+        return of({ summary: {} });
+      });
+      apiSpy.getSummary.mockReturnValue(of(MOCK_SUMMARY));
+      apiSpy.getErrors.mockReturnValue(of([]));
+
+      store.importLogs();
+
+      expect(apiSpy.import).toHaveBeenCalledTimes(2);
+      expect(store.errorMessage()).toBeNull();
       expect(store.loading()).toBe(false);
     });
   });
