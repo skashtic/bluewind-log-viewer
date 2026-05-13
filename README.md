@@ -82,6 +82,20 @@ npm run test:ci   # ng test --watch=false (used by root npm test)
 
 During local development the app uses **relative `/api` URLs**; `proxy.conf.json` forwards them to the backend. For production with the API on another origin, a configurable base URL would be needed (not implemented here).
 
+### Hosted demo (single URL)
+
+After a full build (`npm run build` from the repo root), you can run **only the backend** with `NODE_ENV=production` so Express serves the Angular browser bundle from `frontend/dist/frontend/browser` and still handles `/api/*`. Unknown API routes return JSON 404; other GET requests receive `index.html` for client-side routing.
+
+```bash
+npm run build
+# Unix / Git Bash:
+NODE_ENV=production npm run start:prod
+# Windows PowerShell:
+#   $env:NODE_ENV = "production"; npm run start:prod
+```
+
+Then open `http://localhost:3000` (default `PORT`). This path is optional and does not replace the usual dev setup (backend :3000 + `ng serve` :4200).
+
 ---
 
 ## Demo flow
